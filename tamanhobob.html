@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Calculadora de Bobinas</title>
+  <style>
+    :root{--bg:#0b1023;--card:#0f172a;--muted:#94a3b8;--text:#e5e7eb;--accent:#22c55e;}
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(135deg,#0b1023,#0e1726 55%,#0b1023);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial,"Noto Sans",sans-serif}
+    .container{max-width:980px;margin:40px auto;padding:0 16px}
+    .card{background:rgba(17,24,39,.75);border:1px solid rgba(148,163,184,.18);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.35);overflow:hidden}
+    .header{display:flex;gap:12px;align-items:center;padding:18px 22px;border-bottom:1px solid rgba(148,163,184,.12)}
+    .header h1{font-size:20px;margin:0}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;padding:18px 22px}
+    .field{display:flex;flex-direction:column;gap:6px}
+    label{font-weight:600;font-size:13px;color:var(--muted)}
+    input{background:#0b1220;border:1px solid rgba(148,163,184,.25);color:var(--text);padding:12px 12px;border-radius:12px;outline:none;font-size:15px}
+    input:focus{border-color:#38bdf8;box-shadow:0 0 0 3px rgba(56,189,248,.15)}
+    .actions{display:flex;gap:10px;padding:0 22px 18px}
+    button{appearance:none;border:none;border-radius:12px;padding:12px 16px;font-weight:700;font-size:15px;cursor:pointer}
+    .btn{background:linear-gradient(135deg,#10b981,#22c55e);color:#052e1f}
+    .btn-outline{background:transparent;color:var(--muted);border:1px solid rgba(148,163,184,.25)}
+    .error{display:none;margin:0 22px 16px;padding:12px 14px;border-radius:12px;background:linear-gradient(135deg,#b91c1c,#ef4444)}
+    .results{display:none;padding:18px 22px;border-top:1px dashed rgba(148,163,184,.18);display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+    .stat{background:rgba(2,6,23,.6);border:1px solid rgba(148,163,184,.18);border-radius:14px;padding:14px}
+    .stat .label{font-size:12px;color:var(--muted)}
+    .stat .value{font-size:24px;font-weight:800;margin-top:6px}
+    .muted{color:var(--muted);font-size:12px}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="header">
+        <h1>Calculadora Peso de Bobinas</h1>
+      </div>
+
+      <div id="error" class="error"></div>
+
+      <div class="grid">
+        <div class="field">
+          <label for="peso">Peso desejado (kg)</label>
+          <input id="peso" placeholder="ex.: 50" />
+        </div>
+        <div class="field">
+          <label for="largura">Largura (mm)</label>
+          <input id="largura" placeholder="ex.: 600" />
+        </div>
+        <div class="field">
+          <label for="tubete">Diâmetro do tubete (mm)</label>
+          <input id="tubete" placeholder="ex.: 75" />
+        </div>
+        <div class="field">
+          <label for="densidade">Densidade (g/cm³)</label>
+          <input id="densidade" placeholder="ex.: 0,92" />
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn" id="btnCalc">Calcular</button>
+        <button class="btn-outline" id="btnClear">Limpar</button>
+      </div>
+
+      <div class="results" id="results">
+        <div class="stat">
+          <div class="label">Raio útil (camada radial) (cm)</div>
+          <div class="value" id="Rutil"></div>
+        </div>
+        <div class="stat">
+          <div class="label">Diâmetro externo (cm)</div>
+          <div class="value" id="Dext"></div>
+        </div>
+      </div>
+
+      <div class="muted" style="padding:0 22px 18px">
+        Matheus Oliveira <br>
+        (11) 91218-2112 <br>
+        2025
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function parseNum(s){
+      if(typeof s !== 'string') return Number(s);
+      s = s.trim(); if(!s) return NaN;
+      const hasC = s.includes(','); const hasD = s.includes('.');
+      if(hasC && hasD){ s = s.replace(/\./g,'').replace(',', '.'); }
+      else if(hasC){ s = s.replace(',', '.'); }
+      return Number(s);
+    }
+    function fmt(n){ return new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n); }
+    function showError(msg){ const e=document.getElementById('error'); if(msg){ e.style.display='block'; e.textContent=msg; document.getElementById('results').style.display='none'; } else { e.style.display='none'; } }
+
+    function calcular(){
+      const P = parseNum(document.getElementById('peso').value);
+      const Lmm = parseNum(document.getElementById('largura').value);
+      const Dtmm = parseNum(document.getElementById('tubete').value);
+      const rho = parseNum(document.getElementById('densidade').value);
+      if([P,Lmm,Dtmm,rho].some(v => !isFinite(v))){ return showError('Preencha todos os campos com números válidos.'); }
+      if([P,Lmm,Dtmm,rho].some(v => v <= 0)){ return showError('Todos os valores devem ser maiores que zero.'); }
+
+      const Lcm = Lmm/10; // mm -> cm
+      const r = Dtmm/20;  // diâmetro mm -> raio cm
+      const delta = (P*1000)/(rho*Math.PI*Lcm);
+      const Rext = Math.sqrt(r*r + delta);
+      const Dext = 2*Rext;
+      const Rutil = Rext - r;
+
+      document.getElementById('Rutil').textContent = fmt(Rutil);
+      document.getElementById('Dext').textContent = fmt(Dext);
+      document.getElementById('results').style.display = 'grid';
+      showError('');
+    }
+
+    function limpar(){
+      ['peso','largura','tubete','densidade'].forEach(id=>document.getElementById(id).value='');
+      document.getElementById('results').style.display='none';
+      showError('');
+      document.getElementById('peso').focus();
+    }
+
+    document.getElementById('btnCalc').addEventListener('click', calcular);
+    document.getElementById('btnClear').addEventListener('click', limpar);
+    document.addEventListener('keydown', e=>{ if(e.key==='Enter') calcular(); });
+  </script>
+</body>
+</html>
